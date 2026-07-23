@@ -1,0 +1,198 @@
+// Prisma schema for JustDial clone
+// Learn more: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ── Auth.js required models ────────────────────────────────────────────────
+// https://authjs.dev/getting-started/adapters/prisma
+
+model Account {
+  id                       String  @id @default(cuid())
+  userId                   String
+  type                     String
+  provider                 String
+  providerAccountId        String
+  refresh_token            String? @db.Text
+  access_token             String? @db.Text
+  expires_at               Int?
+  token_type               String?
+  scope                    String?
+  id_token                 String? @db.Text
+  session_state            String?
+  refresh_token_expires_in Int?
+  user                     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ── Core domain ─────────────────────────────────────────────────────────────
+
+enum Role {
+  USER
+  BUSINESS_OWNER
+  ADMIN
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  phone         String?   @unique
+  phoneVerified DateTime?
+  passwordHash  String?
+  image         String?
+  role          Role      @default(USER)
+  accounts      Account[]
+  sessions      Session[]
+  businesses    Business[]
+  reviews       Review[]
+  leads         Lead[]
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+}
+
+// Stores short-lived phone OTP codes for our custom phone-auth flow (MSG91).
+// Separate from Auth.js's VerificationToken, which is used for its own email flows.
+model OtpCode {
+  id        String   @id @default(cuid())
+  phone     String
+  code      String
+  expiresAt DateTime
+  consumed  Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([phone])
+}
+
+model Category {
+  id         String     @id @default(cuid())
+  name       String     @unique
+  slug       String     @unique
+  icon       String?
+  parentId   String?
+  parent     Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children   Category[] @relation("CategoryHierarchy")
+  businesses Business[]
+  createdAt  DateTime   @default(now())
+}
+
+enum BusinessStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  SUSPENDED
+}
+
+model Business {
+  id           String         @id @default(cuid())
+  name         String
+  slug         String         @unique
+  description  String?
+  ownerId      String?
+  owner        User?          @relation(fields: [ownerId], references: [id])
+  categoryId   String
+  category     Category       @relation(fields: [categoryId], references: [id])
+  phone        String
+  whatsapp     String?
+  email        String?
+  website      String?
+  addressLine  String
+  city         String
+  state        String
+  pincode      String
+  // Plain lat/lng for now; geo-radius search is done with raw SQL using
+  // PostGIS (ST_DWithin) computed from these columns at query time — see
+  // prisma-database-setup skill notes for the migration that adds the GIST index.
+  latitude     Float
+  longitude    Float
+  openingHours Json?
+  status       BusinessStatus @default(PENDING)
+  avgRating    Float          @default(0)
+  reviewCount  Int            @default(0)
+  media        Media[]
+  reviews      Review[]
+  leads        Lead[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+
+  @@index([city])
+  @@index([categoryId])
+  @@index([status])
+}
+
+enum MediaType {
+  IMAGE
+  VIDEO
+}
+
+model Media {
+  id         String    @id @default(cuid())
+  businessId String
+  business   Business  @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  url        String
+  publicId   String
+  type       MediaType @default(IMAGE)
+  createdAt  DateTime  @default(now())
+
+  @@index([businessId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([businessId, userId])
+  @@index([businessId])
+}
+
+enum LeadType {
+  ENQUIRY
+  CALL
+  CALLBACK_REQUEST
+}
+
+model Lead {
+  id         String   @id @default(cuid())
+  businessId String
+  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  name       String
+  phone      String
+  message    String?
+  type       LeadType @default(ENQUIRY)
+  createdAt  DateTime @default(now())
+
+  @@index([businessId])
+}
