@@ -9,6 +9,7 @@ import { signIn } from "next-auth/react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Separator } from "@/components/ui/separator";
 import {
   Card,
   CardHeader,
@@ -16,6 +17,7 @@ import {
   CardDescription,
   CardContent,
 } from "@/components/ui/card";
+import { GoogleIcon } from "@/components/google-icon";
 
 const schema = z.object({
   email: z.string().email("Enter a valid email"),
@@ -86,6 +88,20 @@ export default function LoginPage() {
               {isSubmitting ? "Logging in..." : "Log in"}
             </Button>
           </form>
+          <div className="my-4 flex items-center gap-3">
+            <Separator className="flex-1" />
+            <span className="text-xs text-muted-foreground">OR</span>
+            <Separator className="flex-1" />
+          </div>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+          >
+            <GoogleIcon className="size-4" />
+            Continue with Google
+          </Button>
           <p className="mt-4 text-center text-sm text-muted-foreground">
             Don&apos;t have an account?{" "}
             <a href="/signup" className="font-medium text-foreground underline underline-offset-4">

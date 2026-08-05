@@ -5,8 +5,18 @@ const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL });
+// Only construct the adapter (and its underlying connection pool) when we're
+// actually creating a new client. Building it unconditionally here would open
+// a fresh pool on every Next.js dev Fast Refresh, leaking connections toward
+// the pooler's connection limit since the old pool is never closed.
+function createPrismaClient() {
+  const adapter = new PrismaPg({
+    connectionString: process.env.DATABASE_URL,
+    max: 5,
+  });
+  return new PrismaClient({ adapter });
+}
 
-export const prisma = globalForPrisma.prisma ?? new PrismaClient({ adapter });
+export const prisma = globalForPrisma.prisma ?? createPrismaClient();
 
 if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

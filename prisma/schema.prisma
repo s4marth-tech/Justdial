@@ -65,7 +65,9 @@ model User {
   phoneVerified DateTime?
   passwordHash  String?
   image         String?
-  role          Role      @default(USER)
+  role          Role      @default(BUSINESS_OWNER)
+  // Opt-out for the "new lead" owner emails sent from notifyOwnerOfNewLead.
+  emailNotificationsEnabled Boolean @default(true)
   accounts      Account[]
   sessions      Session[]
   businesses    Business[]
@@ -182,17 +184,45 @@ enum LeadType {
   CALLBACK_REQUEST
 }
 
+enum LeadStatus {
+  NEW
+  CONTACTED
+  CONVERTED
+  NOT_INTERESTED
+}
+
+enum LeadSource {
+  // Submitted against one specific business listing (Enquire/Callback/Show
+  // Number on a business page).
+  DIRECT
+  // Fanned out from one "get quotes from multiple businesses" submission
+  // against a category+city, to several matching businesses at once.
+  BROADCAST
+}
+
 model Lead {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   businessId String
-  business   Business @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  business   Business   @relation(fields: [businessId], references: [id], onDelete: Cascade)
   userId     String?
-  user       User?    @relation(fields: [userId], references: [id])
+  user       User?      @relation(fields: [userId], references: [id])
   name       String
   phone      String
   message    String?
-  type       LeadType @default(ENQUIRY)
-  createdAt  DateTime @default(now())
+  type       LeadType   @default(ENQUIRY)
+  status     LeadStatus @default(NEW)
+  source     LeadSource @default(DIRECT)
+  // Captured for basic rate-limiting (count recent leads from the same
+  // source); not shown in any UI. ipAddress is a SHA-256 hash, not the raw
+  // address — equality comparison is all rate-limiting needs.
+  ipAddress  String?
+  // First-party anonymous-visitor cookie id, set only when there's no
+  // logged-in userId. Lets rate-limiting key on "this browser" instead of
+  // falling back to IP alone, so visitors sharing a carrier-NAT IP don't
+  // block each other.
+  visitorId  String?
+  createdAt  DateTime   @default(now())
 
   @@index([businessId])
+  @@index([status])
 }
