@@ -3,6 +3,7 @@ import { z } from "zod";
 export const businessSchema = z.object({
   name: z.string().min(2, "Name is too short").max(120),
   categoryId: z.string().min(1, "Select a category"),
+  specialtyId: z.string().optional().or(z.literal("")),
   description: z
     .string()
     .max(2000)

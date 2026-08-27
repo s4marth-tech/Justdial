@@ -7,6 +7,9 @@ const registerSchema = z.object({
   name: z.string().min(2, "Name is too short"),
   email: z.string().email("Enter a valid email"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  // Defaults to the least-privileged role when omitted/invalid rather than
+  // falling back to "owner" — safer default than the old always-owner behavior.
+  intent: z.enum(["customer", "owner"]).optional(),
 });
 
 export async function POST(request: Request) {
@@ -20,7 +23,7 @@ export async function POST(request: Request) {
     );
   }
 
-  const { name, email, password } = parsed.data;
+  const { name, email, password, intent } = parsed.data;
 
   const existing = await prisma.user.findUnique({ where: { email } });
   if (existing) {
@@ -32,7 +35,12 @@ export async function POST(request: Request) {
 
   const passwordHash = await bcrypt.hash(password, 10);
   await prisma.user.create({
-    data: { name, email, passwordHash, role: "BUSINESS_OWNER" },
+    data: {
+      name,
+      email,
+      passwordHash,
+      role: intent === "owner" ? "BUSINESS_OWNER" : "USER",
+    },
   });
 
   return NextResponse.json({ ok: true });

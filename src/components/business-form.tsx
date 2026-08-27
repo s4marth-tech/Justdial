@@ -25,13 +25,20 @@ import {
 } from "@/components/ui/form";
 
 type Category = { id: string; name: string };
+type Specialty = { id: string; name: string; categoryId: string };
+
+// Sentinel for "no specialty selected" — Select items can't use an empty
+// string as a value, same convention as the "all" sentinel used in other
+// optional-filter selects in this codebase (e.g. admin/leads).
+const NO_SPECIALTY = "none";
 
 type BusinessFormProps = {
   categories: Category[];
+  specialties: Specialty[];
   business?: BusinessFormValues & { id: string };
 };
 
-export function BusinessForm({ categories, business }: BusinessFormProps) {
+export function BusinessForm({ categories, specialties, business }: BusinessFormProps) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -40,6 +47,7 @@ export function BusinessForm({ categories, business }: BusinessFormProps) {
     defaultValues: business ?? {
       name: "",
       categoryId: "",
+      specialtyId: "",
       description: "",
       phone: "",
       whatsapp: "",
@@ -53,6 +61,9 @@ export function BusinessForm({ categories, business }: BusinessFormProps) {
       longitude: 0,
     },
   });
+
+  const selectedCategoryId = form.watch("categoryId");
+  const availableSpecialties = specialties.filter((s) => s.categoryId === selectedCategoryId);
 
   const onSubmit = (values: BusinessFormValues) => {
     setServerError(null);
@@ -89,7 +100,15 @@ export function BusinessForm({ categories, business }: BusinessFormProps) {
           render={({ field }) => (
             <FormItem>
               <FormLabel>Category</FormLabel>
-              <Select value={field.value} onValueChange={field.onChange}>
+              <Select
+                value={field.value}
+                onValueChange={(value) => {
+                  field.onChange(value);
+                  // A specialty belongs to exactly one category — clear a
+                  // stale selection that no longer matches.
+                  form.setValue("specialtyId", "");
+                }}
+              >
                 <FormControl>
                   <SelectTrigger className="w-full">
                     <SelectValue placeholder="Select a category" />
@@ -99,6 +118,36 @@ export function BusinessForm({ categories, business }: BusinessFormProps) {
                   {categories.map((category) => (
                     <SelectItem key={category.id} value={category.id}>
                       {category.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="specialtyId"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Specialty (optional)</FormLabel>
+              <Select
+                value={field.value || NO_SPECIALTY}
+                onValueChange={(value) => field.onChange(value === NO_SPECIALTY ? "" : value)}
+                disabled={availableSpecialties.length === 0}
+              >
+                <FormControl>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select a category first" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value={NO_SPECIALTY}>No specialty</SelectItem>
+                  {availableSpecialties.map((specialty) => (
+                    <SelectItem key={specialty.id} value={specialty.id}>
+                      {specialty.name}
                     </SelectItem>
                   ))}
                 </SelectContent>

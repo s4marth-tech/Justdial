@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { Star } from "lucide-react";
+import { MapPin, Star } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -9,6 +9,7 @@ import {
   CardDescription,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 type BusinessCardProps = {
   business: {
@@ -19,6 +20,7 @@ type BusinessCardProps = {
     avgRating: number;
     reviewCount: number;
     category: { name: string };
+    specialty: { name: string } | null;
     media: { url: string }[];
   };
 };
@@ -40,11 +42,21 @@ export function BusinessCard({ business }: BusinessCardProps) {
             />
           </div>
         )}
-        <CardHeader>
-          <CardTitle>{business.name}</CardTitle>
-          <CardDescription>
-            {business.category.name} · {business.city}
-          </CardDescription>
+        <CardHeader className="flex-row items-center gap-3">
+          <Avatar size="lg" className="shrink-0">
+            {thumbnail && <AvatarImage src={thumbnail} alt="" />}
+            <AvatarFallback>{business.name.charAt(0).toUpperCase()}</AvatarFallback>
+          </Avatar>
+          <div className="min-w-0">
+            <CardTitle className="truncate">{business.name}</CardTitle>
+            <CardDescription className="flex flex-col gap-0.5">
+              <span className="truncate">{business.specialty?.name ?? business.category.name}</span>
+              <span className="flex items-center gap-1 truncate">
+                <MapPin className="size-3 shrink-0" />
+                {business.city}
+              </span>
+            </CardDescription>
+          </div>
         </CardHeader>
         <CardContent className="flex items-center justify-between">
           <div className="flex items-center gap-1 text-sm">

@@ -39,7 +39,7 @@ export async function createBusiness(input: BusinessFormValues) {
     return { error: parsed.error.issues[0].message };
   }
 
-  const { name, categoryId, description, phone, whatsapp, email, website, addressLine, city, state, pincode, latitude, longitude } =
+  const { name, categoryId, specialtyId, description, phone, whatsapp, email, website, addressLine, city, state, pincode, latitude, longitude } =
     parsed.data;
 
   const slug = await uniqueSlug(slugify(name));
@@ -49,6 +49,7 @@ export async function createBusiness(input: BusinessFormValues) {
       name,
       slug,
       categoryId,
+      specialtyId: specialtyId || undefined,
       description: description || undefined,
       phone,
       whatsapp: whatsapp || undefined,
@@ -94,7 +95,7 @@ export async function updateBusiness(businessId: string, input: BusinessFormValu
     return { error: parsed.error.issues[0].message };
   }
 
-  const { name, categoryId, description, phone, whatsapp, email, website, addressLine, city, state, pincode, latitude, longitude } =
+  const { name, categoryId, specialtyId, description, phone, whatsapp, email, website, addressLine, city, state, pincode, latitude, longitude } =
     parsed.data;
 
   // Slug is deliberately left unchanged even if the name changes, so the
@@ -106,6 +107,7 @@ export async function updateBusiness(businessId: string, input: BusinessFormValu
     data: {
       name,
       categoryId,
+      specialtyId: specialtyId || null,
       description: description || null,
       phone,
       whatsapp: whatsapp || null,

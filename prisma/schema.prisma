@@ -1,4 +1,4 @@
-// Prisma schema for JustDial clone
+// Prisma schema for My Lads (local business directory)
 // Learn more: https://pris.ly/d/prisma-schema
 
 generator client {
@@ -73,6 +73,7 @@ model User {
   businesses    Business[]
   reviews       Review[]
   leads         Lead[]
+  claims        Claim[]
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 }
@@ -91,15 +92,35 @@ model OtpCode {
 }
 
 model Category {
+  id          String      @id @default(cuid())
+  name        String      @unique
+  slug        String      @unique
+  icon        String?
+  parentId    String?
+  parent      Category?   @relation("CategoryHierarchy", fields: [parentId], references: [id])
+  children    Category[]  @relation("CategoryHierarchy")
+  businesses  Business[]
+  specialties Specialty[]
+  createdAt   DateTime    @default(now())
+}
+
+// A controlled sub-classification within one Category (e.g. Cardiologist
+// under Doctors) — a fixed, seeded vocabulary rather than free text, so this
+// doesn't refragment the same way raw scraped category names once did (see
+// the LAD reclassification migration). Optional on Business: most of the
+// existing 474 imported/seeded businesses have no specialty data yet and
+// won't until backfilled or self-tagged by an owner.
+model Specialty {
   id         String     @id @default(cuid())
-  name       String     @unique
-  slug       String     @unique
-  icon       String?
-  parentId   String?
-  parent     Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id])
-  children   Category[] @relation("CategoryHierarchy")
+  name       String
+  slug       String
+  categoryId String
+  category   Category   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   businesses Business[]
   createdAt  DateTime   @default(now())
+
+  @@unique([categoryId, slug])
+  @@index([categoryId])
 }
 
 enum BusinessStatus {
@@ -118,6 +139,8 @@ model Business {
   owner        User?          @relation(fields: [ownerId], references: [id])
   categoryId   String
   category     Category       @relation(fields: [categoryId], references: [id])
+  specialtyId  String?
+  specialty    Specialty?     @relation(fields: [specialtyId], references: [id])
   phone        String
   whatsapp     String?
   email        String?
@@ -138,11 +161,13 @@ model Business {
   media        Media[]
   reviews      Review[]
   leads        Lead[]
+  claims       Claim[]
   createdAt    DateTime       @default(now())
   updatedAt    DateTime       @updatedAt
 
   @@index([city])
   @@index([categoryId])
+  @@index([specialtyId])
   @@index([status])
 }
 
@@ -161,6 +186,33 @@ model Media {
   createdAt  DateTime  @default(now())
 
   @@index([businessId])
+}
+
+enum ClaimStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+// A logged-in user asserting they're the real owner of an unclaimed
+// (ownerId: null) business. Deliberately no automated verification path —
+// OtpCode exists but is blocked on MSG91 + India DLT registration, an
+// external dependency — so admin review is the only safety mechanism here,
+// same as how new business submissions already require admin approval.
+model Claim {
+  id                String      @id @default(cuid())
+  businessId        String
+  business          Business    @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  requestedByUserId String
+  requestedBy       User        @relation(fields: [requestedByUserId], references: [id], onDelete: Cascade)
+  status            ClaimStatus @default(PENDING)
+  // Optional free-text explanation from the claimant of why they're the
+  // real owner — shown to the admin reviewing the claim.
+  note              String?
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+
+  @@index([businessId, status])
 }
 
 model Review {

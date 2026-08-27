@@ -48,7 +48,7 @@ export default async function BusinessesPage() {
         <div className="flex flex-col gap-3">
           {businesses.map((business) => (
             <Card key={business.id}>
-              <CardHeader className="flex flex-row items-center justify-between">
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
                 <div>
                   <CardTitle>{business.name}</CardTitle>
                   <CardDescription>

@@ -205,7 +205,7 @@ export default async function DashboardPage() {
         <div className="flex flex-col gap-3">
           {businesses.slice(0, RECENT_BUSINESS_LIMIT).map((business) => (
             <Card key={business.id}>
-              <CardHeader className="flex flex-row items-center justify-between py-4">
+              <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2 py-4">
                 <div>
                   <CardTitle className="text-base">{business.name}</CardTitle>
                   <CardDescription>

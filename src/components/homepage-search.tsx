@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Utensils,
@@ -33,7 +33,10 @@ type Category = { id: string; name: string; slug: string };
 
 // Keyed by slug (unique) rather than the free-text `icon` column, with a
 // generic fallback so a future category added without an icon mapping here
-// doesn't break the grid.
+// doesn't break the grid. 8 of these 11 keys (everything but doctors/
+// lawyers/accountants) are for categories that have no businesses and
+// aren't shown anywhere right now — left in place rather than pruned so
+// the map doesn't need rebuilding if one of those categories comes back.
 const CATEGORY_ICONS: Record<string, typeof Utensils> = {
   restaurants: Utensils,
   electricians: Zap,
@@ -48,11 +51,21 @@ const CATEGORY_ICONS: Record<string, typeof Utensils> = {
   accountants: Calculator,
 };
 
+// The only categories with real businesses right now — see
+// src/lib/categories.ts. Kept as its own explicit list (not derived from
+// whatever `categories` happens to be passed in) so this stays correct on
+// its own even if the caller's category.findMany() filtering changes.
+const FEATURED_CATEGORY_SLUGS = ["doctors", "lawyers", "accountants"];
+
 type GeoState = "idle" | "locating" | "done" | "denied" | "unsupported";
 
 export function HomeSearch({ categories }: { categories: Category[] }) {
   const [city, setCity] = useState("");
   const [geoState, setGeoState] = useState<GeoState>("idle");
+
+  const featuredCategories = FEATURED_CATEGORY_SLUGS.map((slug) =>
+    categories.find((category) => category.slug === slug)
+  ).filter((category): category is Category => category !== undefined);
 
   const handleNearMe = () => {
     if (!("geolocation" in navigator)) {
@@ -67,9 +80,26 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
         setGeoState("done");
       },
       () => setGeoState("denied"),
-      { timeout: 10000 }
+      { timeout: 10000, enableHighAccuracy: true }
     );
   };
+
+  // Autopick: if location access is already granted from a previous visit,
+  // fill the city in automatically instead of waiting for a "near me" click.
+  // Only reads existing permission state, so it never prompts on its own.
+  useEffect(() => {
+    if (!("permissions" in navigator) || !("geolocation" in navigator)) return;
+    let cancelled = false;
+    navigator.permissions
+      .query({ name: "geolocation" as PermissionName })
+      .then((status) => {
+        if (!cancelled && status.state === "granted") handleNearMe();
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const categoryHref = (slug: string) => {
     const params = new URLSearchParams({ category: slug });
@@ -78,14 +108,15 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
   };
 
   return (
-    <div className="flex w-full flex-col items-center gap-6">
+    <div className="flex w-full flex-col items-center gap-10">
+      <div className="flex w-full max-w-3xl flex-col items-center gap-2">
       <form
         action="/search"
         method="GET"
-        className="flex w-full max-w-xl flex-col gap-3 rounded-xl bg-card p-4 ring-1 ring-foreground/10 sm:flex-row sm:flex-wrap"
+        className="flex w-full flex-col gap-2 rounded-3xl bg-card p-3 shadow-lg shadow-foreground/5 sm:flex-row sm:items-stretch sm:rounded-full"
       >
         <Select name="category">
-          <SelectTrigger className="w-full sm:w-48">
+          <SelectTrigger className="w-full border-none bg-transparent font-medium shadow-none sm:w-44">
             <SelectValue placeholder="All categories" />
           </SelectTrigger>
           <SelectContent>
@@ -96,18 +127,24 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
             ))}
           </SelectContent>
         </Select>
-        <Input name="q" placeholder="What are you looking for?" className="h-8 flex-1" />
-        <div className="flex flex-1 gap-1.5">
+        <div className="hidden w-px shrink-0 bg-border sm:block" />
+        <Input
+          name="q"
+          placeholder="What are you looking for?"
+          className="h-9 flex-1 border-none bg-transparent shadow-none"
+        />
+        <div className="hidden w-px shrink-0 bg-border sm:block" />
+        <div className="flex flex-1 items-center gap-1 sm:max-w-48">
           <Input
             name="city"
-            placeholder="City (e.g. Mumbai)"
+            placeholder="City"
             value={city}
             onChange={(event) => setCity(event.target.value)}
-            className="h-8 flex-1"
+            className="h-9 flex-1 border-none bg-transparent shadow-none"
           />
           <Button
             type="button"
-            variant="outline"
+            variant="ghost"
             size="icon"
             className="shrink-0"
             onClick={handleNearMe}
@@ -122,33 +159,45 @@ export function HomeSearch({ categories }: { categories: Category[] }) {
             )}
           </Button>
         </div>
-        <Button type="submit" className="sm:w-auto">
+        <Button type="submit" size="lg" className="shrink-0 rounded-full px-6">
           Search
         </Button>
-        {(geoState === "denied" || geoState === "unsupported" || (geoState === "done" && city)) && (
-          <p className="text-xs text-muted-foreground sm:basis-full">
-            {geoState === "denied" && "Location access denied — pick your city above instead."}
-            {geoState === "unsupported" &&
-              "Your browser doesn't support location detection — pick your city above instead."}
-            {geoState === "done" && city && `Showing results near ${city}.`}
-          </p>
-        )}
       </form>
+      {(geoState === "denied" || geoState === "unsupported" || (geoState === "done" && city)) && (
+        <p className="text-xs text-muted-foreground">
+          {geoState === "denied" && "Location access denied — pick your city above instead."}
+          {geoState === "unsupported" &&
+            "Your browser doesn't support location detection — pick your city above instead."}
+          {geoState === "done" && city && `Showing results near ${city}.`}
+        </p>
+      )}
+      </div>
 
-      <div className="grid w-full grid-cols-3 gap-3 sm:grid-cols-5">
-        {categories.map((category) => {
-          const Icon = CATEGORY_ICONS[category.slug] ?? Store;
-          return (
-            <Link
-              key={category.id}
-              href={categoryHref(category.slug)}
-              className="flex flex-col items-center gap-2 rounded-xl bg-card p-4 text-center ring-1 ring-foreground/10 transition-colors hover:bg-muted"
-            >
-              <Icon className="size-6" />
-              <span className="text-xs font-medium">{category.name}</span>
-            </Link>
-          );
-        })}
+      <div className="w-full">
+        <h6 className="mb-4 text-xs font-medium tracking-wide text-primary/80 uppercase">
+          Browse by category
+        </h6>
+        {/* Fixed at 3 columns to match FEATURED_CATEGORY_SLUGS' 3 entries —
+            a wider sm:grid-cols-6 here (left from when there were 6 featured
+            categories) would leave empty, lopsided column tracks on any
+            screen past the phone breakpoint. */}
+        <div className="grid w-full grid-cols-3 gap-4">
+          {featuredCategories.map((category) => {
+            const Icon = CATEGORY_ICONS[category.slug] ?? Store;
+            return (
+              <Link
+                key={category.id}
+                href={categoryHref(category.slug)}
+                className="flex flex-col items-center gap-3 rounded-xl bg-card p-4 text-center shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md"
+              >
+                <span className="flex size-12 items-center justify-center rounded-full bg-accent text-accent-foreground">
+                  <Icon className="size-6" />
+                </span>
+                <span className="font-heading text-sm">{category.name}</span>
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Users } from "lucide-react";
@@ -89,11 +90,21 @@ export function BroadcastLeadDialog({
           </DialogDescription>
         </DialogHeader>
         {matchedCount !== null ? (
-          <p className="text-sm text-muted-foreground">
-            {matchedCount > 0
-              ? `Sent to ${matchedCount} business${matchedCount === 1 ? "" : "es"}. They'll reach out to you directly.`
-              : "Thanks! We've got your request."}
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              {matchedCount > 0
+                ? `Sent to ${matchedCount} business${matchedCount === 1 ? "" : "es"}. They'll reach out to you directly.`
+                : "Thanks! We've got your request."}
+            </p>
+            <div className="flex gap-2">
+              <Button variant="outline" className="flex-1" nativeButton={false} render={<Link href="/search" />}>
+                Search more
+              </Button>
+              <Button className="flex-1" nativeButton={false} render={<Link href="/account" />}>
+                Go to my account
+              </Button>
+            </div>
+          </div>
         ) : (
           <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-3">
             <input type="hidden" {...register("category")} />

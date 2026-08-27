@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { BusinessForm } from "@/components/business-form";
 import { BusinessMediaUpload } from "@/components/business-media-upload";
 import { Separator } from "@/components/ui/separator";
+import { LAD_CATEGORY_SLUGS } from "@/lib/categories";
 
 type EditBusinessPageProps = {
   params: Promise<{ id: string }>;
@@ -16,9 +17,17 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
     redirect("/login");
   }
 
-  const [business, categories] = await Promise.all([
+  const [business, categories, specialties] = await Promise.all([
     prisma.business.findUnique({ where: { id }, include: { media: { orderBy: { createdAt: "asc" } } } }),
-    prisma.category.findMany({ orderBy: { name: "asc" } }),
+    prisma.category.findMany({
+      where: { slug: { in: [...LAD_CATEGORY_SLUGS] } },
+      orderBy: { name: "asc" },
+    }),
+    prisma.specialty.findMany({
+      where: { category: { slug: { in: [...LAD_CATEGORY_SLUGS] } } },
+      select: { id: true, name: true, categoryId: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   if (!business) {
@@ -33,10 +42,12 @@ export default async function EditBusinessPage({ params }: EditBusinessPageProps
       <h1 className="mb-6 text-2xl font-semibold">Edit business</h1>
       <BusinessForm
         categories={categories}
+        specialties={specialties}
         business={{
           id: business.id,
           name: business.name,
           categoryId: business.categoryId,
+          specialtyId: business.specialtyId ?? "",
           description: business.description ?? "",
           phone: business.phone,
           whatsapp: business.whatsapp ?? "",

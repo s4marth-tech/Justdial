@@ -283,4 +283,9 @@ export async function updateLeadStatus(formData: FormData) {
 
   revalidatePath("/dashboard/leads");
   revalidatePath("/dashboard");
+  // Admin's unclaimed-business leads view (src/app/admin/leads/page.tsx)
+  // reuses this same action — without this, its status badges wouldn't
+  // refresh after an update until a manual reload. Ownership check above is
+  // unchanged; this only adds a cache invalidation.
+  revalidatePath("/admin/leads");
 }

@@ -1,3 +1,5 @@
+import { cache } from "react";
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import { MessageCircle, Mail, Globe, MapPin, Star } from "lucide-react";
@@ -8,7 +10,25 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { LeadActions, PhoneReveal } from "@/components/lead-actions";
 import { ReviewForm } from "@/components/review-form";
+import { ClaimBusinessDialog } from "@/components/claim-business-dialog";
 import { BusinessMap } from "@/components/business-map";
+
+// Wrapped in React's cache() so generateMetadata and the page body — which
+// both need this same business — only issue one query per request instead
+// of two; React dedupes calls with identical arguments automatically.
+const getBusiness = cache(async (slug: string) => {
+  return prisma.business.findUnique({
+    where: { slug },
+    include: {
+      category: true,
+      media: { orderBy: { createdAt: "asc" } },
+      reviews: {
+        include: { user: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      },
+    },
+  });
+});
 
 const DAY_LABELS: Record<string, string> = {
   mon: "Monday",
@@ -24,20 +44,35 @@ type BusinessPageProps = {
   params: Promise<{ slug: string }>;
 };
 
+export async function generateMetadata({ params }: BusinessPageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const business = await getBusiness(slug);
+
+  if (!business || business.status !== "APPROVED") {
+    return { title: "Business not found" };
+  }
+
+  const title = `${business.name} — ${business.category.name} in ${business.city} | My Lads`;
+  const description =
+    business.description?.trim() ||
+    `${business.name} is a ${business.category.name.toLowerCase()} business in ${business.city}, ${business.state}. Find contact details, address, and reviews on My Lads.`;
+  const image = business.media[0]?.url;
+
+  return {
+    title,
+    description,
+    openGraph: {
+      title,
+      description,
+      ...(image ? { images: [{ url: image }] } : {}),
+    },
+  };
+}
+
 export default async function BusinessPage({ params }: BusinessPageProps) {
   const { slug } = await params;
 
-  const business = await prisma.business.findUnique({
-    where: { slug },
-    include: {
-      category: true,
-      media: { orderBy: { createdAt: "asc" } },
-      reviews: {
-        include: { user: true },
-        orderBy: { createdAt: "desc" },
-      },
-    },
-  });
+  const business = await getBusiness(slug);
 
   if (!business || business.status !== "APPROVED") {
     notFound();
@@ -48,6 +83,13 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
   const myReview = session?.user
     ? business.reviews.find((review) => review.userId === session.user.id) ?? null
     : null;
+
+  const pendingClaim = business.ownerId
+    ? null
+    : await prisma.claim.findFirst({
+        where: { businessId: business.id, status: "PENDING" },
+        select: { requestedByUserId: true },
+      });
 
   const openingHours = business.openingHours as Record<string, string> | null;
 
@@ -66,6 +108,31 @@ export default async function BusinessPage({ params }: BusinessPageProps) {
           </span>
         </div>
       </div>
+
+      {!business.ownerId && (
+        <div className="mb-6 rounded-lg border border-dashed p-3 text-sm">
+          {!session?.user ? (
+            <p className="text-muted-foreground">
+              Is this your business?{" "}
+              <a href="/login" className="underline underline-offset-4">
+                Log in to claim this business
+              </a>
+              .
+            </p>
+          ) : pendingClaim?.requestedByUserId === session.user.id ? (
+            <p className="text-muted-foreground">Your claim on this business is under review.</p>
+          ) : pendingClaim ? (
+            <p className="text-muted-foreground">
+              A claim is currently under review for this business.
+            </p>
+          ) : (
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-muted-foreground">Is this your business?</p>
+              <ClaimBusinessDialog businessId={business.id} businessName={business.name} />
+            </div>
+          )}
+        </div>
+      )}
 
       {business.media.length > 0 && (
         <div className="mb-6 flex gap-2 overflow-x-auto">

@@ -79,7 +79,7 @@ export function BusinessMediaUpload({
           multiple: true,
           maxFiles: 6,
           sources: ["local"],
-          folder: "justdial/businesses",
+          folder: "my-lads/businesses",
           clientAllowedFormats: ["png", "jpg", "jpeg", "webp"],
         }}
         onSuccess={(result) => {

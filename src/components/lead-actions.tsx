@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { MessageSquarePlus, Phone, PhoneCall } from "lucide-react";
@@ -20,6 +21,21 @@ import {
 } from "@/components/ui/dialog";
 
 type LeadType = "ENQUIRY" | "CALLBACK_REQUEST" | "CALL";
+
+// Shown after an enquiry/callback/number-reveal submission completes, so the
+// visitor has somewhere to go next instead of a dead-end confirmation.
+function PostSubmitActions() {
+  return (
+    <div className="flex gap-2">
+      <Button variant="outline" className="flex-1" nativeButton={false} render={<Link href="/search" />}>
+        Search more
+      </Button>
+      <Button className="flex-1" nativeButton={false} render={<Link href="/account" />}>
+        Go to my account
+      </Button>
+    </div>
+  );
+}
 
 function LeadForm({
   businessId,
@@ -138,9 +154,12 @@ function LeadDialog({
           <DialogDescription>{description}</DialogDescription>
         </DialogHeader>
         {success ? (
-          <p className="text-sm text-muted-foreground">
-            Thanks! The business will get in touch with you soon.
-          </p>
+          <div className="flex flex-col gap-3">
+            <p className="text-sm text-muted-foreground">
+              Thanks! The business will get in touch with you soon.
+            </p>
+            <PostSubmitActions />
+          </div>
         ) : (
           <LeadForm
             businessId={businessId}
@@ -205,11 +224,14 @@ export function PhoneReveal({ businessId, phone }: { businessId: string; phone: 
           </DialogDescription>
         </DialogHeader>
         {revealed ? (
-          <div className="flex flex-col items-center gap-1 py-2">
-            <a href={`tel:${phone}`} className="text-lg font-semibold hover:underline">
-              {phone}
-            </a>
-            <p className="text-sm text-muted-foreground">Tap the number to call.</p>
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col items-center gap-1 py-2">
+              <a href={`tel:${phone}`} className="text-lg font-semibold hover:underline">
+                {phone}
+              </a>
+              <p className="text-sm text-muted-foreground">Tap the number to call.</p>
+            </div>
+            <PostSubmitActions />
           </div>
         ) : (
           <LeadForm

@@ -5,7 +5,7 @@ import { PrismaAdapter } from "@auth/prisma-adapter";
 import bcrypt from "bcryptjs";
 import { prisma } from "@/lib/prisma";
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const { handlers, auth, signIn, signOut } = NextAuth((req) => ({
   adapter: PrismaAdapter(prisma),
   session: { strategy: "jwt" },
   pages: {
@@ -47,6 +47,17 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (user) {
         token.id = user.id;
         token.role = user.role;
+      } else if (token.id) {
+        // Re-read the role on every subsequent request rather than trusting
+        // the value baked in at sign-in — without this, a role change made
+        // after login (e.g. claim approval promoting a customer to
+        // BUSINESS_OWNER) wouldn't take effect until the user logged out
+        // and back in, even though the DB was already correct.
+        const dbUser = await prisma.user.findUnique({
+          where: { id: token.id as string },
+          select: { role: true },
+        });
+        if (dbUser) token.role = dbUser.role;
       }
       return token;
     },
@@ -58,4 +69,21 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       return session;
     },
   },
-});
+  events: {
+    // Only fires when the Prisma adapter creates a brand-new user — i.e. a
+    // first-time Google sign-in, never a returning-user login. The adapter
+    // always applies the schema's default role (BUSINESS_OWNER) before this
+    // event runs, so a query param from the client can't reach it; this
+    // short-lived cookie (set by the signup screen right before the OAuth
+    // redirect, see src/app/signup/page.tsx) is what carries the
+    // questionnaire's choice across that redirect. Only downgrades to USER
+    // — the "list my business" path needs no change since it already
+    // matches the schema default.
+    async createUser({ user }) {
+      const intent = req?.cookies.get("jd-signup-intent")?.value;
+      if (intent === "customer" && user.id) {
+        await prisma.user.update({ where: { id: user.id }, data: { role: "USER" } });
+      }
+    },
+  },
+}));

@@ -32,6 +32,10 @@ const RANGE_OPTIONS = [
 
 const SOURCE_OPTIONS = Object.values(LeadSource);
 
+function daysAgo(days: number) {
+  return new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+}
+
 type LeadsPageProps = {
   searchParams: Promise<{
     business?: string;
@@ -57,12 +61,7 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     orderBy: { name: "asc" },
   });
 
-  const rangeCutoff =
-    range === "7d"
-      ? new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      : range === "30d"
-        ? new Date(Date.now() - 30 * 24 * 60 * 60 * 1000)
-        : null;
+  const rangeCutoff = range === "7d" ? daysAgo(7) : range === "30d" ? daysAgo(30) : null;
 
   // Scopes every query to businesses this owner actually owns — the
   // ownership check lives here, server-side, not just in what the UI shows.
@@ -85,8 +84,8 @@ export default async function LeadsPage({ searchParams }: LeadsPageProps) {
     ...(rangeCutoff ? { createdAt: { gte: rangeCutoff } } : {}),
   };
 
-  const weekCutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-  const monthCutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+  const weekCutoff = daysAgo(7);
+  const monthCutoff = daysAgo(30);
 
   const [leads, totalEver, totalThisWeek, totalThisMonth, enquiryCount, callbackCount, callCount] =
     await Promise.all([
