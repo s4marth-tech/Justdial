@@ -72,86 +72,90 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   };
 
   return (
-    <div className="mx-auto w-full max-w-5xl flex-1 px-6 py-10">
-      <div className="mb-6">
-        <SearchFilters
-          categories={categories}
-          specialties={specialties}
-          initialCategory={category}
-          initialSpecialty={specialty}
-          initialCity={city}
-          initialQ={q}
-        />
-      </div>
+    <div className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
+      <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
+        <aside className="lg:sticky lg:top-6 lg:self-start">
+          <SearchFilters
+            categories={categories}
+            specialties={specialties}
+            initialCategory={category}
+            initialSpecialty={specialty}
+            initialCity={city}
+            initialQ={q}
+          />
+        </aside>
 
-      {otherCategories.length > 0 && (
-        <div className="mb-6 flex flex-wrap items-center gap-2">
-          <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
-            Other categories:
-          </span>
-          {otherCategories.map((otherCategory) => (
-            <Link key={otherCategory.id} href={otherCategoryHref(otherCategory.slug)}>
-              <Badge variant="outline" className="cursor-pointer hover:bg-accent">
-                {otherCategory.name}
-              </Badge>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-semibold">
-            {total} result{total === 1 ? "" : "s"}
-            {city ? ` in ${city}` : ""}
-            {q ? ` for "${q}"` : ""}
-          </h1>
-          {correctedQuery && (
-            <p className="mt-1 text-sm text-muted-foreground">
-              Showing results for <span className="font-medium">&quot;{correctedQuery}&quot;</span> instead.
-            </p>
-          )}
-        </div>
-        {category && city && total >= 2 && businesses.length > 0 && (
-          <BroadcastLeadDialog category={category} categoryLabel={businesses[0].category.name} city={city} />
-        )}
-      </div>
-
-      {businesses.length === 0 ? (
-        <p className="text-muted-foreground">
-          No businesses found. Try a different city, category, or keyword.
-        </p>
-      ) : (
-        <>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {businesses.map((business) => (
-              <BusinessCard key={business.id} business={business} />
-            ))}
-          </div>
-
-          {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-4 text-sm">
-              {page > 1 ? (
-                <Link href={pageHref(page - 1)} className="underline underline-offset-4">
-                  Previous
-                </Link>
-              ) : (
-                <span className="text-muted-foreground">Previous</span>
-              )}
-              <span className="text-muted-foreground">
-                Page {page} of {totalPages}
+        <div className="min-w-0">
+          {otherCategories.length > 0 && (
+            <div className="mb-6 flex flex-wrap items-center gap-2">
+              <span className="text-xs font-medium tracking-wide text-muted-foreground uppercase">
+                Other categories:
               </span>
-              {page < totalPages ? (
-                <Link href={pageHref(page + 1)} className="underline underline-offset-4">
-                  Next
+              {otherCategories.map((otherCategory) => (
+                <Link key={otherCategory.id} href={otherCategoryHref(otherCategory.slug)}>
+                  <Badge variant="outline" className="cursor-pointer hover:bg-accent">
+                    {otherCategory.name}
+                  </Badge>
                 </Link>
-              ) : (
-                <span className="text-muted-foreground">Next</span>
-              )}
+              ))}
             </div>
           )}
-        </>
-      )}
+
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h1 className="text-2xl font-semibold">
+                {total} result{total === 1 ? "" : "s"}
+                {city ? ` in ${city}` : ""}
+                {q ? ` for "${q}"` : ""}
+              </h1>
+              {correctedQuery && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Showing results for <span className="font-medium">&quot;{correctedQuery}&quot;</span> instead.
+                </p>
+              )}
+            </div>
+            {category && city && total >= 2 && businesses.length > 0 && (
+              <BroadcastLeadDialog category={category} categoryLabel={businesses[0].category.name} city={city} />
+            )}
+          </div>
+
+          {businesses.length === 0 ? (
+            <p className="text-muted-foreground">
+              No businesses found. Try a different city, category, or keyword.
+            </p>
+          ) : (
+            <>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {businesses.map((business) => (
+                  <BusinessCard key={business.id} business={business} />
+                ))}
+              </div>
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex items-center justify-center gap-4 text-sm">
+                  {page > 1 ? (
+                    <Link href={pageHref(page - 1)} className="underline underline-offset-4">
+                      Previous
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">Previous</span>
+                  )}
+                  <span className="text-muted-foreground">
+                    Page {page} of {totalPages}
+                  </span>
+                  {page < totalPages ? (
+                    <Link href={pageHref(page + 1)} className="underline underline-offset-4">
+                      Next
+                    </Link>
+                  ) : (
+                    <span className="text-muted-foreground">Next</span>
+                  )}
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -86,92 +86,108 @@ export function SearchFilters({
       <form
         action="/search"
         method="GET"
-        className="flex w-full flex-col gap-2 rounded-2xl border border-border bg-card p-3 sm:flex-row sm:flex-wrap sm:items-stretch"
+        className="flex w-full flex-col gap-4 rounded-2xl border border-border bg-card p-4"
       >
-        <Select
-          name="category"
-          value={category}
-          onValueChange={(value) => {
-            setCategory(value ?? "");
-            // A specialty belongs to exactly one category — clear a stale
-            // selection that no longer applies.
-            setSpecialty("");
-          }}
-        >
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue placeholder="All categories" />
-          </SelectTrigger>
-          <SelectContent>
-            {categories.map((c) => (
-              <SelectItem key={c.id} value={c.slug}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
-          name="specialty"
-          value={specialty}
-          onValueChange={(value) => setSpecialty(value ?? "")}
-          disabled={availableSpecialties.length === 0}
-        >
-          <SelectTrigger className="w-full sm:w-44">
-            <SelectValue
-              placeholder={category ? "All specialties" : "Pick a category first"}
-            />
-          </SelectTrigger>
-          <SelectContent>
-            {availableSpecialties.map((s) => (
-              <SelectItem key={s.id} value={s.slug}>
-                {s.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Input
-          name="q"
-          defaultValue={initialQ}
-          placeholder="Search businesses, categories, cities..."
-          className="flex-1"
-        />
-        <div className="flex items-center gap-1 sm:max-w-48">
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Search</label>
           <Input
-            name="city"
-            value={city}
-            onChange={(event) => setCity(event.target.value)}
-            placeholder="City"
-            className="flex-1"
+            name="q"
+            defaultValue={initialQ}
+            placeholder="Search businesses, categories, cities..."
+            className="w-full"
           />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="shrink-0"
-            onClick={handleNearMe}
-            disabled={geoState === "locating"}
-            aria-label="Use my current location"
-            title="Use my current location"
-          >
-            {geoState === "locating" ? (
-              <Loader2 className="size-4 animate-spin" />
-            ) : (
-              <LocateFixed className="size-4" />
-            )}
-          </Button>
         </div>
-        <Button type="submit" className="shrink-0">
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Category</label>
+          <Select
+            name="category"
+            value={category}
+            onValueChange={(value) => {
+              setCategory(value ?? "");
+              // A specialty belongs to exactly one category — clear a stale
+              // selection that no longer applies.
+              setSpecialty("");
+            }}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="All categories" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.map((c) => (
+                <SelectItem key={c.id} value={c.slug}>
+                  {c.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Specialty</label>
+          <Select
+            name="specialty"
+            value={specialty}
+            onValueChange={(value) => setSpecialty(value ?? "")}
+            disabled={availableSpecialties.length === 0}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue
+                placeholder={category ? "All specialties" : "Pick a category first"}
+              />
+            </SelectTrigger>
+            <SelectContent>
+              {availableSpecialties.map((s) => (
+                <SelectItem key={s.id} value={s.slug}>
+                  {s.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">City</label>
+          <div className="flex items-center gap-1">
+            <Input
+              name="city"
+              value={city}
+              onChange={(event) => setCity(event.target.value)}
+              placeholder="City"
+              className="flex-1"
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0"
+              onClick={handleNearMe}
+              disabled={geoState === "locating"}
+              aria-label="Use my current location"
+              title="Use my current location"
+            >
+              {geoState === "locating" ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <LocateFixed className="size-4" />
+              )}
+            </Button>
+          </div>
+          {(geoState === "denied" || geoState === "unsupported" || (geoState === "done" && city)) && (
+            <p className="text-xs text-muted-foreground">
+              {geoState === "denied" && "Location access denied — pick your city above instead."}
+              {geoState === "unsupported" &&
+                "Your browser doesn't support location detection — pick your city above instead."}
+              {geoState === "done" && city && `Showing results near ${city}.`}
+            </p>
+          )}
+        </div>
+
+        <Button type="submit" className="w-full justify-center">
           <Search className="size-4" />
           Search
         </Button>
       </form>
-      {(geoState === "denied" || geoState === "unsupported" || (geoState === "done" && city)) && (
-        <p className="px-1 text-xs text-muted-foreground">
-          {geoState === "denied" && "Location access denied — pick your city above instead."}
-          {geoState === "unsupported" &&
-            "Your browser doesn't support location detection — pick your city above instead."}
-          {geoState === "done" && city && `Showing results near ${city}.`}
-        </p>
-      )}
     </div>
   );
 }
