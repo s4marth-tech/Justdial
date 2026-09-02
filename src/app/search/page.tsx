@@ -14,6 +14,9 @@ type SearchPageProps = {
     specialty?: string;
     city?: string;
     q?: string;
+    minRating?: string;
+    openNow?: string;
+    verifiedOnly?: string;
     page?: string;
   }>;
 };
@@ -36,11 +39,23 @@ export async function generateMetadata({ searchParams }: SearchPageProps): Promi
 }
 
 export default async function SearchPage({ searchParams }: SearchPageProps) {
-  const { category, specialty, city, q, page: pageParam } = await searchParams;
+  const {
+    category,
+    specialty,
+    city,
+    q,
+    minRating: minRatingParam,
+    openNow: openNowParam,
+    verifiedOnly: verifiedOnlyParam,
+    page: pageParam,
+  } = await searchParams;
   const page = Number(pageParam) || 1;
+  const minRating = Number(minRatingParam) || undefined;
+  const openNow = openNowParam === "true";
+  const verifiedOnly = verifiedOnlyParam === "true";
 
   const [{ businesses, total, pageSize, correctedQuery }, categories, specialties] = await Promise.all([
-    searchBusinesses({ category, specialty, city, q, page }),
+    searchBusinesses({ category, specialty, city, q, minRating, openNow, verifiedOnly, page }),
     prisma.category.findMany({
       where: { slug: { in: [...LAD_CATEGORY_SLUGS] } },
       orderBy: { name: "asc" },
@@ -67,6 +82,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
     if (specialty) params.set("specialty", specialty);
     if (city) params.set("city", city);
     if (q) params.set("q", q);
+    if (minRating) params.set("minRating", String(minRating));
+    if (openNow) params.set("openNow", "true");
+    if (verifiedOnly) params.set("verifiedOnly", "true");
     params.set("page", String(targetPage));
     return `/search?${params.toString()}`;
   };
@@ -82,6 +100,9 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
             initialSpecialty={specialty}
             initialCity={city}
             initialQ={q}
+            initialMinRating={minRatingParam}
+            initialOpenNow={openNow}
+            initialVerifiedOnly={verifiedOnly}
           />
         </aside>
 

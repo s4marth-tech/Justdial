@@ -57,25 +57,26 @@ enum Role {
 }
 
 model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  phone         String?   @unique
-  phoneVerified DateTime?
-  passwordHash  String?
-  image         String?
-  role          Role      @default(BUSINESS_OWNER)
+  id                              String                   @id @default(cuid())
+  name                            String?
+  email                           String?                  @unique
+  emailVerified                   DateTime?
+  phone                           String?                  @unique
+  phoneVerified                   DateTime?
+  passwordHash                    String?
+  image                           String?
+  role                            Role                     @default(BUSINESS_OWNER)
   // Opt-out for the "new lead" owner emails sent from notifyOwnerOfNewLead.
-  emailNotificationsEnabled Boolean @default(true)
-  accounts      Account[]
-  sessions      Session[]
-  businesses    Business[]
-  reviews       Review[]
-  leads         Lead[]
-  claims        Claim[]
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  emailNotificationsEnabled       Boolean                  @default(true)
+  accounts                        Account[]
+  sessions                        Session[]
+  businesses                      Business[]
+  reviews                         Review[]
+  leads                           Lead[]
+  claims                          Claim[]
+  reviewedVerificationSubmissions VerificationSubmission[]
+  createdAt                       DateTime                 @default(now())
+  updatedAt                       DateTime                 @updatedAt
 }
 
 // Stores short-lived phone OTP codes for our custom phone-auth flow (MSG91).
@@ -156,19 +157,31 @@ model Business {
   longitude    Float
   openingHours Json?
   status       BusinessStatus @default(PENDING)
-  avgRating    Float          @default(0)
-  reviewCount  Int            @default(0)
-  media        Media[]
-  reviews      Review[]
-  leads        Lead[]
-  claims       Claim[]
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
+
+  verificationStatus      VerificationStatus       @default(UNVERIFIED)
+  // Raw score out of 50 from the most recently reviewed VerificationSubmission.
+  verificationScore       Int?
+  verifiedAt              DateTime?
+  verificationSubmissions VerificationSubmission[]
+
+  // reviewCount === 0 is the canonical signal for "no rating data yet" — the
+  // importer coalesces a missing scrape rating to 0, so avgRating alone
+  // can't distinguish "never rated" from "rated 0.0". Always check
+  // reviewCount before reading avgRating.
+  avgRating   Float    @default(0)
+  reviewCount Int      @default(0)
+  media       Media[]
+  reviews     Review[]
+  leads       Lead[]
+  claims      Claim[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 
   @@index([city])
   @@index([categoryId])
   @@index([specialtyId])
   @@index([status])
+  @@index([verificationStatus])
 }
 
 enum MediaType {
@@ -211,6 +224,33 @@ model Claim {
   note              String?
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
+
+  @@index([businessId, status])
+}
+
+enum VerificationStatus {
+  UNVERIFIED
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+// One attempt at verifying a business (e.g. an owner-submitted questionnaire
+// plus an AI pass over the answers). scoreBreakdown stays Json rather than
+// per-criterion columns — the scoring weights are still being tuned, same
+// reasoning as answers/aiFindings.
+model VerificationSubmission {
+  id               String             @id @default(cuid())
+  businessId       String
+  business         Business           @relation(fields: [businessId], references: [id], onDelete: Cascade)
+  answers          Json
+  aiFindings       Json?
+  scoreBreakdown   Json?
+  status           VerificationStatus @default(PENDING)
+  reviewedByUserId String?
+  reviewedBy       User?              @relation(fields: [reviewedByUserId], references: [id])
+  reviewedAt       DateTime?
+  createdAt        DateTime           @default(now())
 
   @@index([businessId, status])
 }

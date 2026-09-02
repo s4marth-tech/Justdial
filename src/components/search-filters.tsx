@@ -17,6 +17,14 @@ type Category = { id: string; name: string; slug: string };
 type Specialty = { id: string; name: string; slug: string; categoryId: string };
 type GeoState = "idle" | "locating" | "done" | "denied" | "unsupported";
 
+// Base UI's <Select.Value> only shows an item's label once that item has
+// been rendered inside the (portal-mounted, opened-on-demand) popup — until
+// then it falls back to the raw `value`. Passing `items` to the Select root
+// gives it the value->label mapping up front, so the trigger shows "4+
+// stars" instead of "4" even on a fresh page load where the popup has never
+// been opened.
+const RATING_ITEMS: Record<string, string> = { "3": "3+ stars", "4": "4+ stars" };
+
 export function SearchFilters({
   categories,
   specialties,
@@ -24,6 +32,9 @@ export function SearchFilters({
   initialSpecialty,
   initialCity,
   initialQ,
+  initialMinRating,
+  initialOpenNow,
+  initialVerifiedOnly,
 }: {
   categories: Category[];
   specialties: Specialty[];
@@ -31,6 +42,9 @@ export function SearchFilters({
   initialSpecialty?: string;
   initialCity?: string;
   initialQ?: string;
+  initialMinRating?: string;
+  initialOpenNow?: boolean;
+  initialVerifiedOnly?: boolean;
 }) {
   const [city, setCity] = useState(initialCity ?? "");
   const [geoState, setGeoState] = useState<GeoState>("idle");
@@ -39,6 +53,7 @@ export function SearchFilters({
   // submitted.
   const [category, setCategory] = useState(initialCategory ?? "");
   const [specialty, setSpecialty] = useState(initialSpecialty ?? "");
+  const [minRating, setMinRating] = useState(initialMinRating ?? "");
 
   const selectedCategory = categories.find((c) => c.slug === category);
   const availableSpecialties = specialties.filter(
@@ -103,6 +118,7 @@ export function SearchFilters({
           <Select
             name="category"
             value={category}
+            items={Object.fromEntries(categories.map((c) => [c.slug, c.name]))}
             onValueChange={(value) => {
               setCategory(value ?? "");
               // A specialty belongs to exactly one category — clear a stale
@@ -128,6 +144,7 @@ export function SearchFilters({
           <Select
             name="specialty"
             value={specialty}
+            items={Object.fromEntries(availableSpecialties.map((s) => [s.slug, s.name]))}
             onValueChange={(value) => setSpecialty(value ?? "")}
             disabled={availableSpecialties.length === 0}
           >
@@ -182,6 +199,46 @@ export function SearchFilters({
             </p>
           )}
         </div>
+
+        <div className="flex flex-col gap-1.5">
+          <label className="text-xs font-medium text-muted-foreground">Rating</label>
+          <Select
+            name="minRating"
+            value={minRating}
+            items={RATING_ITEMS}
+            onValueChange={(value) => setMinRating(value ?? "")}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Any rating" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="3">3+ stars</SelectItem>
+              <SelectItem value="4">4+ stars</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="openNow"
+            value="true"
+            defaultChecked={initialOpenNow}
+            className="size-4 rounded border-border accent-primary"
+          />
+          Open now
+        </label>
+
+        <label className="flex items-center gap-2 text-sm">
+          <input
+            type="checkbox"
+            name="verifiedOnly"
+            value="true"
+            defaultChecked={initialVerifiedOnly}
+            className="size-4 rounded border-border accent-primary"
+          />
+          Verified only
+        </label>
 
         <Button type="submit" className="w-full justify-center">
           <Search className="size-4" />

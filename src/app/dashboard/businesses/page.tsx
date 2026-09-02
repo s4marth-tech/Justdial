@@ -20,13 +20,32 @@ const STATUS_VARIANT: Record<
   SUSPENDED: "destructive",
 };
 
+const VERIFICATION_STATUS_VARIANT: Record<
+  string,
+  "default" | "secondary" | "destructive" | "outline"
+> = {
+  UNVERIFIED: "outline",
+  PENDING: "secondary",
+  VERIFIED: "default",
+  REJECTED: "destructive",
+};
+
 export default async function BusinessesPage() {
   const session = await auth();
   if (!session?.user) return null;
 
   const businesses = await prisma.business.findMany({
     where: { ownerId: session.user.id },
-    include: { category: true },
+    include: {
+      category: true,
+      // Only need to know whether one's pending, to decide whether "Verify"
+      // is still actionable — the review queue itself lives elsewhere.
+      verificationSubmissions: {
+        where: { status: "PENDING" },
+        select: { id: true },
+        take: 1,
+      },
+    },
     orderBy: { createdAt: "desc" },
   });
 
@@ -59,6 +78,20 @@ export default async function BusinessesPage() {
                   <Badge variant={STATUS_VARIANT[business.status]}>
                     {business.status}
                   </Badge>
+                  <Badge variant={VERIFICATION_STATUS_VARIANT[business.verificationStatus]}>
+                    {business.verificationSubmissions.length > 0
+                      ? "VERIFICATION PENDING"
+                      : business.verificationStatus}
+                  </Badge>
+                  {business.verificationStatus !== "VERIFIED" &&
+                    business.verificationSubmissions.length === 0 && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        nativeButton={false}
+                        render={<Link href={`/dashboard/businesses/${business.id}/verify`}>Verify</Link>}
+                      />
+                    )}
                   <Button
                     size="sm"
                     variant="outline"

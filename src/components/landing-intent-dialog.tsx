@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Search, Briefcase, Shield, LocateFixed, Loader2 } from "lucide-react";
+import { Search, Briefcase, LocateFixed, Loader2 } from "lucide-react";
 import { findNearestCity } from "@/lib/cities";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 
 const STORAGE_KEY = "jd-intent-prompted";
 
-type Intent = "customer" | "owner" | "admin";
+type Intent = "customer" | "owner";
 type GeoState = "idle" | "locating" | "done" | "denied" | "unsupported";
 
 export function LandingIntentDialog({ isLoggedIn }: { isLoggedIn: boolean }) {
@@ -89,13 +89,6 @@ function LandingIntentDialogInner({ isLoggedIn }: { isLoggedIn: boolean }) {
   const handleContinue = () => {
     if (!canContinue || !intent) return;
     dismiss();
-    // Admin accounts are provisioned manually, never through self-service
-    // signup — this selection is just a fast path to the login form for an
-    // admin who already has an account, not a way to acquire the role.
-    if (intent === "admin") {
-      router.push("/login");
-      return;
-    }
     const params = new URLSearchParams({ intent, name: name.trim() });
     if (city.trim()) params.set("city", city.trim());
     router.push(`/signup?${params.toString()}`);
@@ -121,7 +114,7 @@ function LandingIntentDialogInner({ isLoggedIn }: { isLoggedIn: boolean }) {
 
         <div className="flex flex-col gap-2">
           <Label className="text-xs font-normal text-muted-foreground">I&apos;m here to&hellip;</Label>
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
             <button
               type="button"
               onClick={() => setIntent("customer")}
@@ -149,20 +142,6 @@ function LandingIntentDialogInner({ isLoggedIn }: { isLoggedIn: boolean }) {
               <Briefcase className="size-5" />
               <span className="font-heading text-base">List my business</span>
               <span className="text-xs opacity-80">Get discovered nearby</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setIntent("admin")}
-              className={cn(
-                "flex flex-col items-start gap-1.5 rounded-lg border-2 p-4 text-left transition-colors",
-                intent === "admin"
-                  ? "border-primary bg-primary text-primary-foreground"
-                  : "border-border bg-card text-foreground hover:bg-muted"
-              )}
-            >
-              <Shield className="size-5" />
-              <span className="font-heading text-base">I&apos;m an admin</span>
-              <span className="text-xs opacity-80">Manage the directory</span>
             </button>
           </div>
         </div>

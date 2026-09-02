@@ -1,6 +1,6 @@
 import Link from "next/link";
 import Image from "next/image";
-import { MapPin, Star } from "lucide-react";
+import { BadgeCheck, MapPin, Star } from "lucide-react";
 import {
   Card,
   CardContent,
@@ -19,6 +19,7 @@ type BusinessCardProps = {
     phone: string;
     avgRating: number;
     reviewCount: number;
+    verificationStatus: string;
     category: { name: string };
     specialty: { name: string } | null;
     media: { url: string }[];
@@ -58,11 +59,26 @@ export function BusinessCard({ business }: BusinessCardProps) {
             </CardDescription>
           </div>
         </CardHeader>
-        <CardContent className="flex items-center justify-between">
-          <div className="flex items-center gap-1 text-sm">
-            <Star className="size-4 fill-yellow-400 text-yellow-400" />
-            <span className="font-medium">{business.avgRating.toFixed(1)}</span>
-            <span className="text-muted-foreground">({business.reviewCount})</span>
+        <CardContent className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            {business.reviewCount === 0 ? (
+              // avgRating defaults to 0 for a business with no reviews yet, so
+              // "0.0 (0)" would misread as a bad rating rather than no rating —
+              // see the Business.avgRating comment in schema.prisma.
+              <Badge variant="secondary">New</Badge>
+            ) : (
+              <div className="flex items-center gap-1 text-sm">
+                <Star className="size-4 fill-yellow-400 text-yellow-400" />
+                <span className="font-medium">{business.avgRating.toFixed(1)}</span>
+                <span className="text-muted-foreground">({business.reviewCount})</span>
+              </div>
+            )}
+            {business.verificationStatus === "VERIFIED" && (
+              <Badge variant="secondary" className="gap-1 text-blue-700 dark:text-blue-400">
+                <BadgeCheck className="size-3.5" />
+                Verified
+              </Badge>
+            )}
           </div>
           <Badge variant="outline">{business.phone}</Badge>
         </CardContent>
