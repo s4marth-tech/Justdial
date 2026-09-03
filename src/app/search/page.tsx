@@ -92,7 +92,14 @@ export default async function SearchPage({ searchParams }: SearchPageProps) {
   return (
     <div className="mx-auto w-full max-w-6xl flex-1 px-6 py-10">
       <div className="grid gap-6 lg:grid-cols-[260px_1fr]">
-        <aside className="lg:sticky lg:top-6 lg:self-start">
+        {/* Sticks below the site header's *live* height (published as
+            --site-header-height by SiteHeaderShell, which also animates as
+            the header collapses on scroll) — a fixed offset would either
+            leave a gap once the header shrinks or, worse, let the header
+            paint over the top of this sidebar once both are stuck. The
+            89px fallback matches the header's full-size height for the
+            moment before that variable is set (no JS, or pre-hydration). */}
+        <aside className="lg:sticky lg:top-[calc(var(--site-header-height,89px)+1rem)] lg:self-start">
           <SearchFilters
             categories={categories}
             specialties={specialties}

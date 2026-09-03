@@ -8,7 +8,7 @@ import {
   verificationSubmissionSchema,
   type VerificationSubmissionFormValues,
 } from "@/lib/verification/submission";
-import type { VerificationQuestion } from "@/lib/verification/questions";
+import { resolveQuestionText, type VerificationQuestion } from "@/lib/verification/questions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -25,9 +25,11 @@ import {
 export function VerificationForm({
   businessId,
   questions,
+  categorySlug,
 }: {
   businessId: string;
   questions: VerificationQuestion[];
+  categorySlug?: string | null;
 }) {
   const [serverError, setServerError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -67,36 +69,39 @@ export function VerificationForm({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="flex flex-col gap-4">
-        {questions.map((question) => (
-          <FormField
-            key={question.id}
-            control={form.control}
-            name={`answers.${question.id}`}
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>
-                  {question.label}
-                  {!question.required && (
-                    <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
-                  )}
-                </FormLabel>
-                <FormControl>
-                  {question.type === "textarea" ? (
-                    <Textarea rows={3} placeholder={question.placeholder} {...field} />
-                  ) : (
-                    <Input
-                      type={question.type === "number" ? "number" : "text"}
-                      placeholder={question.placeholder}
-                      {...field}
-                    />
-                  )}
-                </FormControl>
-                {question.description && <FormDescription>{question.description}</FormDescription>}
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-        ))}
+        {questions.map((question) => {
+          const { label, description, placeholder } = resolveQuestionText(question, categorySlug);
+          return (
+            <FormField
+              key={question.id}
+              control={form.control}
+              name={`answers.${question.id}`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>
+                    {label}
+                    {!question.required && (
+                      <span className="ml-1 font-normal text-muted-foreground">(optional)</span>
+                    )}
+                  </FormLabel>
+                  <FormControl>
+                    {question.type === "textarea" ? (
+                      <Textarea rows={3} placeholder={placeholder} {...field} />
+                    ) : (
+                      <Input
+                        type={question.type === "number" ? "number" : "text"}
+                        placeholder={placeholder}
+                        {...field}
+                      />
+                    )}
+                  </FormControl>
+                  {description && <FormDescription>{description}</FormDescription>}
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          );
+        })}
 
         {serverError && <p className="text-sm text-destructive">{serverError}</p>}
 

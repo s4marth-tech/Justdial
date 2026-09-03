@@ -197,16 +197,19 @@ export async function searchBusinesses({
   verifiedOnly,
   page = 1,
 }: BusinessSearchParams) {
-  const currentPage = Math.max(1, page);
-  const trimmedQ = q?.trim() || undefined;
-
   // "Open now" and the verified-first tier below both need a boolean check
   // per business (parsed opening-hours text; verificationStatus) that can't
   // be expressed as a Postgres WHERE/ORDER BY — so instead of DB-level
-  // skip/take, every structurally-matching business is fetched once (still
-  // ordered by avgRating desc), filtered/reordered in JS, and paginated by
-  // slicing the resulting array. Fine at this directory's scale; revisit if
-  // the table grows enough for that full fetch to matter.
+  // skip/take, every structurally-matching business is loaded into memory
+  // once (still ordered by avgRating desc), filtered/reordered in JS, and
+  // paginated by slicing the resulting array. That's an acceptable trade at
+  // this directory's current scale (~474 rows total), but it will need
+  // reworking into SQL-side pagination if the business table grows into the
+  // tens of thousands — a full in-memory fetch per search stops being cheap
+  // well before then.
+  const currentPage = Math.max(1, page);
+  const trimmedQ = q?.trim() || undefined;
+
   const runSearch = async (qValue?: string) => {
     const where = buildWhere({ category, specialty, city, q: qValue, minRating, verifiedOnly });
     const all = await prisma.business.findMany({

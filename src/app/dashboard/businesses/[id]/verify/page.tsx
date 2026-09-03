@@ -22,6 +22,7 @@ export default async function VerifyBusinessPage({ params }: VerifyBusinessPageP
       name: true,
       ownerId: true,
       verificationStatus: true,
+      category: { select: { slug: true } },
       verificationSubmissions: {
         where: { status: "PENDING" },
         select: { createdAt: true },
@@ -64,7 +65,11 @@ export default async function VerifyBusinessPage({ params }: VerifyBusinessPageP
           </p>
         </div>
       ) : (
-        <VerificationForm businessId={business.id} questions={VERIFICATION_QUESTIONS} />
+        <VerificationForm
+          businessId={business.id}
+          questions={VERIFICATION_QUESTIONS}
+          categorySlug={business.category.slug}
+        />
       )}
     </div>
   );

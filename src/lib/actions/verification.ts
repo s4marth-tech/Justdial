@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { verificationSubmissionSchema } from "@/lib/verification/submission";
+import { verificationSubmissionSchema, buildStoredAnswers } from "@/lib/verification/submission";
 
 export async function submitVerification(input: unknown) {
   const session = await auth();
@@ -19,7 +19,12 @@ export async function submitVerification(input: unknown) {
 
   const business = await prisma.business.findUnique({
     where: { id: businessId },
-    select: { id: true, ownerId: true, verificationStatus: true },
+    select: {
+      id: true,
+      ownerId: true,
+      verificationStatus: true,
+      category: { select: { slug: true } },
+    },
   });
   if (!business) {
     return { error: "Business not found." };
@@ -44,7 +49,7 @@ export async function submitVerification(input: unknown) {
   await prisma.verificationSubmission.create({
     data: {
       businessId,
-      answers,
+      answers: buildStoredAnswers(answers, business.category.slug),
       status: "PENDING",
     },
   });
